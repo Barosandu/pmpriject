@@ -16,10 +16,11 @@
 #define MOVE_1_BUTTONY 13
 #define MOVE_1_BUTTON_ORIENTATION 15
 #define MOVE_1_DROP_SHIP 17
-#define MOVE_1_TOGGLE 33
+#define PLAYER_LED 33
+#define INVALID_LED 27
 #define PIXEL_MULTIPLIER 4
-#define SHIP_NR 4
-#define BOMB_NR 4
+#define SHIP_NR 8
+#define BOMB_NR 8
 #define SHIP_HEIGHT PIXEL_MULTIPLIER * 5 * 2
 #define SHIP_WIDTH PIXEL_MULTIPLIER * 2
 
@@ -56,7 +57,7 @@ int parse_command(const char* input, ParsedCommand* out) {
     out->pos2 = atoi(token);
 
     // Parse orientation (for ships only)
-    if (out->type == ADD_SHIP || out->type == MOVE_SHIP || out->type == PASTE_SHIP) {
+    if (1) {//(out->type == ADD_SHIP || out->type == MOVE_SHIP || out->type == PASTE_SHIP || out->type == MOVE_BOMB) {
         token = strtok(NULL, "|");
         if (!token) return -1;
         out->orientation = atoi(token);
