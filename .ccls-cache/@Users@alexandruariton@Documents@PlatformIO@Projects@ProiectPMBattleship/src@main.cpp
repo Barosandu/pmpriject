@@ -11,7 +11,10 @@ int millis_passed_declanseaza_aratare = 0;
 int millis_limit_declanseaza_aratare = 1000;
 int millis_init_declanseaza_aratare = 0;
 int sw_decl_aratare = 0;
-
+volatile int do_movex = 0;
+volatile int do_movey = 0;
+volatile int do_orientation = 0;
+volatile int do_paste = 0;
 
 int last_drawn_time = 0;
 int last_drawn_limit = 200;
@@ -239,37 +242,22 @@ uint8_t MAC_1[] = { 0xA0, 0xDD, 0x6C, 0x6F, 0x85, 0x7C };
 uint8_t MAC_2[] = { 0xA0, 0xDD, 0x6C, 0x74, 0x8B, 0x70 };
 uint8_t *peer_mac;
 
+volatile int do_received = 0;
+char incoming_data_str[50] = {0};
 
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
 {
-	Serial.print("Received from: ");
-	for (int i = 0; i < 6; i++) {
-		Serial.print(mac[i], HEX);
-		if (i < 5)
-			Serial.print(":");
-	}
-	Serial.print(" | Data: ");
-	Serial.write(incomingData, len);
-	Serial.print("Finished_data");
-	Serial.print(len);
-	Serial.print("Finished len");
-
-	char* incoming_data_str = (char*)calloc(len + 1, sizeof(char));
-
 	strncpy(incoming_data_str, (char*)incomingData, len);
-	int r = do_received_command(incoming_data_str);
-	Serial.println(incoming_data_str);
-	free(incoming_data_str);
+
+	// int r = do_received_command(incoming_data_str);
+	do_received = 1;
 }
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
-	Serial.print("Last Packet Send Status: ");
-	Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
-
 }
 
-unsigned long debounce_delay = 500;
+unsigned long debounce_delay = 300;
 unsigned long last_movex_time = 0;
 unsigned long last_movey_time = 0;
 unsigned long last_paste_time = 0;
@@ -294,6 +282,10 @@ int validate() {
 int movexx = 0;
 
 void IRAM_ATTR onMoveXPlayer1() {
+	do_movex = 1;
+}
+
+void DO_onMoveXPlayer1() {
 	if (!validate()) {
 		return;
 	}
@@ -315,14 +307,15 @@ void IRAM_ATTR onMoveXPlayer1() {
 	movexx = 1;
 }
 
-
-
 void IRAM_ATTR onMoveYPlayer1() {
+ do_movey = 1;
+}
+
+void DO_onMoveYPlayer1() {
 	if (!validate()) {
 		return;
 	}
 
-	Serial.print("Move y: \n");
 	if(millis() - last_movey_time > debounce_delay) {
 		last_movey_time = millis();
 	} else { return; }
@@ -341,6 +334,10 @@ void IRAM_ATTR onMoveYPlayer1() {
 }
 
 void IRAM_ATTR onChnageOrientationPlayer1() {
+ do_orientation = 1;
+}
+
+void DO_onChnageOrientationPlayer1() {
 	if (!validate()) {
 		return;
 	}
@@ -379,6 +376,10 @@ void onAddPlayer1() {
 }
 
 void IRAM_ATTR onPastePlayer1() {
+	do_paste = 1;
+}
+
+void DO_onPastePlayer1() {
 	if (!validate()) {
 		return;
 	}
@@ -391,7 +392,6 @@ void IRAM_ATTR onPastePlayer1() {
 		return;
 	}
 
-	Serial.print("paste: \n");
 
 	if (mode == PUTTING_SHIPS) {
 		const char *msg = "p|0|0|0";
@@ -425,6 +425,7 @@ void IRAM_ATTR onPastePlayer1() {
 
 }
 
+
 volatile int led_state = 0;
 int led_limit = 200000; 
 hw_timer_t *timer = NULL;
@@ -439,6 +440,32 @@ void IRAM_ATTR onTimer() {
   } else {
     digitalWrite(PLAYER_LED, LOW);
   }
+}
+
+void do_all() {
+	if (do_received) {
+		do_received_command(incoming_data_str);
+		do_received = 0;
+	}
+	if (do_movex) {
+		DO_onMoveXPlayer1();
+		do_movex = 0;
+	}
+
+	if(do_movey) {
+		DO_onMoveYPlayer1();
+		do_movey = 0;
+	}
+
+	if(do_orientation) {
+		DO_onChnageOrientationPlayer1();
+		do_orientation = 0;
+	}
+
+	if(do_paste) {
+		DO_onPastePlayer1();
+		do_paste = 0;
+	}
 }
 
 void setup()
@@ -592,6 +619,7 @@ int validate_all() {
 
 void loop()
 {
+	do_all();
 	if(movexx) {
 		can_put_ship = validate_all();
 		movexx = 0;
