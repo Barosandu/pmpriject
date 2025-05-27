@@ -594,8 +594,8 @@ int validate_bomb_in_screen() {
 		}
 		if (bombposx >= 0 &&
     bombposy >= 0 &&
-    bombposx + width <= 100 &&
-    bombposy + height <= 150) {
+    bombposx + width <= RECT_W &&
+    bombposy + height <= RECT_H) {
 
 		  digitalWrite(INVALID_LED, LOW);	
 		return 0;
